@@ -4,47 +4,60 @@
 
 using namespace std;
 
-BookingSystem::BookingSystem() : bookingIdCounter(1) {}
+BookingSystem::BookingSystem(bool ownsConcerts) 
+    : bookingIdCounter(1), ownsConcerts(ownsConcerts) {}
 
 BookingSystem::~BookingSystem() {
-    for (auto concert : concerts) delete concert;
-    for (auto booking : bookings) delete booking;
+    if (ownsConcerts) {
+        for (auto concert : concerts) {
+            delete concert;
+        }
+    }
 }
 
 void BookingSystem::addConcert(Concert* concert) {
+    if (!concert) return;
+    lock_guard<mutex> lock(systemMutex);
     concerts.push_back(concert);
 }
 
-string BookingSystem::createBooking(string customerName, Concert* concert, int seatNumber) {
-    if (!concert->bookSeat(seatNumber)) {
+string BookingSystem::createBooking(const string& customerName, Concert* concert, int seatNumber) {
+    return createBooking(customerName, concert, seatNumber, make_shared<RegularBookingPolicy>());
+}
+
+string BookingSystem::createBooking(const string& customerName, Concert* concert, 
+                                   int seatNumber, shared_ptr<BookingPolicy> policy) {
+    string bookingId;
+    {
+        lock_guard<mutex> lock(systemMutex);
+        bookingId = "B" + to_string(bookingIdCounter++);
+    }
+
+    auto booking = bookingService.createBooking(bookingId, customerName, concert, seatNumber, policy);
+    if (!booking) {
         cout << "Failed to book seat: Seat " << seatNumber << " is not available" << endl;
         return "";
     }
-    
-    string bookingId = "B" + to_string(bookingIdCounter++);
-    double totalPrice = concert->getBasePrice();  // Could add premium pricing logic here
-    
-    Booking* booking = new Booking(bookingId, customerName, concert, seatNumber, totalPrice);
-    bookings.push_back(booking);
+
+    {
+        lock_guard<mutex> lock(systemMutex);
+        bookings.push_back(booking);
+    }
+
     return bookingId;
 }
 
-bool BookingSystem::cancelBooking(string bookingId) {
-    Booking* booking = findBooking(bookingId);
-    if (!booking) return false;
-    
-    booking->getConcert()->cancelSeat(booking->getSeatNumber());
-    
-    auto it = find(bookings.begin(), bookings.end(), booking);
-    if (it != bookings.end()) {
-        bookings.erase(it);
-        delete booking;
-        return true;
+bool BookingSystem::cancelBooking(const string& bookingId) {
+    shared_ptr<Booking> booking = getBooking(bookingId);
+    if (!booking) {
+        return false;
     }
-    return false;
+
+    return bookingService.cancelBooking(booking);
 }
 
 void BookingSystem::displayAllConcerts() const {
+    lock_guard<mutex> lock(systemMutex);
     cout << "\nAvailable Concerts:" << endl;
     for (const auto& concert : concerts) {
         concert->displayInfo();
@@ -53,6 +66,7 @@ void BookingSystem::displayAllConcerts() const {
 }
 
 void BookingSystem::displayAllBookings() const {
+    lock_guard<mutex> lock(systemMutex);
     cout << "\nCurrent Bookings:" << endl;
     for (const auto& booking : bookings) {
         booking->displayInfo();
@@ -61,6 +75,7 @@ void BookingSystem::displayAllBookings() const {
 }
 
 void BookingSystem::displayAvailableSeats(Concert* concert) const {
+    if (!concert) return;
     cout << "\nAvailable seats for concert " << concert->getName() << ":" << endl;
     for (int i = 1; i <= concert->getTotalSeats(); i++) {
         if (concert->isSeatAvailable(i)) {
@@ -70,16 +85,27 @@ void BookingSystem::displayAvailableSeats(Concert* concert) const {
     cout << endl;
 }
 
-Concert* BookingSystem::findConcert(string concertId) const {
+Concert* BookingSystem::findConcert(const string& concertId) const {
+    lock_guard<mutex> lock(systemMutex);
     for (auto concert : concerts) {
-        if (concert->getConcertId() == concertId) return concert;
+        if (concert->getConcertId() == concertId) {
+            return concert;
+        }
     }
     return nullptr;
 }
 
-Booking* BookingSystem::findBooking(string bookingId) const {
-    for (auto booking : bookings) {
-        if (booking->getBookingId() == bookingId) return booking;
+Booking* BookingSystem::findBooking(const string& bookingId) const {
+    auto sp = getBooking(bookingId);
+    return sp.get();
+}
+
+shared_ptr<Booking> BookingSystem::getBooking(const string& bookingId) const {
+    lock_guard<mutex> lock(systemMutex);
+    for (const auto& booking : bookings) {
+        if (booking->getBookingId() == bookingId) {
+            return booking;
+        }
     }
     return nullptr;
 }

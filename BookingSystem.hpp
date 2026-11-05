@@ -3,31 +3,44 @@
 
 #include <vector>
 #include <string>
+#include <memory>
+#include <mutex>
 #include "Concert.hpp"
 #include "Booking.hpp"
+#include "BookingPolicy.hpp"
+#include "BookingService.hpp"
 
 using namespace std;
 
 class BookingSystem {
 private:
     vector<Concert*> concerts;
-    vector<Booking*> bookings;
+    vector<shared_ptr<Booking>> bookings;
     int bookingIdCounter;
+    mutable mutex systemMutex;
+    BookingService bookingService;
+    bool ownsConcerts;
 
 public:
-    BookingSystem();
+    explicit BookingSystem(bool ownsConcerts = true);
     ~BookingSystem();
-    
+
+    BookingSystem(const BookingSystem&) = delete;
+    BookingSystem& operator=(const BookingSystem&) = delete;
+
     void addConcert(Concert* concert);
-    string createBooking(string customerName, Concert* concert, int seatNumber);
-    bool cancelBooking(string bookingId);
-    
+    Concert* findConcert(const string& concertId) const;
     void displayAllConcerts() const;
-    void displayAllBookings() const;
     void displayAvailableSeats(Concert* concert) const;
-    
-    Concert* findConcert(string concertId) const;
-    Booking* findBooking(string bookingId) const;
+
+    string createBooking(const string& customerName, Concert* concert, int seatNumber);
+    string createBooking(const string& customerName, Concert* concert, int seatNumber, 
+                         shared_ptr<BookingPolicy> policy);
+    bool cancelBooking(const string& bookingId);
+
+    void displayAllBookings() const;
+    Booking* findBooking(const string& bookingId) const;
+    shared_ptr<Booking> getBooking(const string& bookingId) const;
 };
 
 #endif
