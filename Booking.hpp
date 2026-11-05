@@ -4,24 +4,26 @@
 #include <string>
 #include "Concert.hpp"
 
+using namespace std;
+
 class Booking {
 private:
-    std::string bookingId;
-    std::string customerName;
+    string bookingId;
+    string customerName;
     Concert* concert;
     int seatNumber;
     double totalPrice;
 
 public:
-    Booking(std::string bookingId, std::string customerName, Concert* concert, 
+    Booking(string bookingId, string customerName, Concert* concert, 
             int seatNumber, double totalPrice);
     
-    std::string getBookingId() const;
-    std::string getCustomerName() const;
+    string getBookingId() const;
+    string getCustomerName() const;
     Concert* getConcert() const;
     int getSeatNumber() const;
     double getTotalPrice() const;
     void displayInfo() const;
 };
 
-#endif 
+#endif

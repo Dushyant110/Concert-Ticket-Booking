@@ -5,24 +5,26 @@
 #include <vector>
 #include "Seat.hpp"
 
+using namespace std;
+
 class Concert {
 private:
-    std::string concertId;
-    std::string name;
-    std::string venue;
-    std::string date;
+    string concertId;
+    string name;
+    string venue;
+    string date;
     double basePrice;
-    std::vector<Seat> seats;
+    vector<Seat> seats;
     int totalSeats;
 
 public:
-    Concert(std::string concertId, std::string name, std::string venue, 
-            std::string date, double basePrice, int totalSeats);
+    Concert(string concertId, string name, string venue, 
+            string date, double basePrice, int totalSeats);
     
-    std::string getConcertId() const;
-    std::string getName() const;
-    std::string getVenue() const;
-    std::string getDate() const;
+    string getConcertId() const;
+    string getName() const;
+    string getVenue() const;
+    string getDate() const;
     double getBasePrice() const;
     int getTotalSeats() const;
     int getAvailableSeats() const;
@@ -33,4 +35,4 @@ public:
     void displayInfo() const;
 };
 
-#endif 
+#endif

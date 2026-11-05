@@ -2,8 +2,10 @@
 #include <iostream>
 #include <iomanip>
 
-Concert::Concert(std::string concertId, std::string name, std::string venue, 
-                std::string date, double basePrice, int totalSeats)
+using namespace std;
+
+Concert::Concert(string concertId, string name, string venue, 
+                string date, double basePrice, int totalSeats)
     : concertId(concertId), name(name), venue(venue), date(date), 
       basePrice(basePrice), totalSeats(totalSeats) {
     
@@ -13,10 +15,10 @@ Concert::Concert(std::string concertId, std::string name, std::string venue,
     }
 }
 
-std::string Concert::getConcertId() const { return concertId; }
-std::string Concert::getName() const { return name; }
-std::string Concert::getVenue() const { return venue; }
-std::string Concert::getDate() const { return date; }
+string Concert::getConcertId() const { return concertId; }
+string Concert::getName() const { return name; }
+string Concert::getVenue() const { return venue; }
+string Concert::getDate() const { return date; }
 double Concert::getBasePrice() const { return basePrice; }
 int Concert::getTotalSeats() const { return totalSeats; }
 
@@ -50,10 +52,10 @@ bool Concert::isSeatAvailable(int seatNumber) const {
 }
 
 void Concert::displayInfo() const {
-    std::cout << "Concert: " << name << std::endl;
-    std::cout << "ID: " << concertId << std::endl;
-    std::cout << "Venue: " << venue << std::endl;
-    std::cout << "Date: " << date << std::endl;
-    std::cout << "Price: $" << std::fixed << std::setprecision(2) << basePrice << std::endl;
-    std::cout << "Available Seats: " << getAvailableSeats() << "/" << totalSeats << std::endl;
-} 
+    cout << "Concert: " << name << endl;
+    cout << "ID: " << concertId << endl;
+    cout << "Venue: " << venue << endl;
+    cout << "Date: " << date << endl;
+    cout << "Price: $" << fixed << setprecision(2) << basePrice << endl;
+    cout << "Available Seats: " << getAvailableSeats() << "/" << totalSeats << endl;
+}

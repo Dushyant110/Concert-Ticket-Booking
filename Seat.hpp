@@ -1,6 +1,8 @@
 #ifndef SEAT_HPP
 #define SEAT_HPP
 
+using namespace std;
+
 class Seat {
 private:
     int seatNumber;
@@ -15,4 +17,4 @@ public:
     void cancel();
 };
 
-#endif 
+#endif

@@ -1,6 +1,8 @@
 #include "BookingSystem.hpp"
 #include <iostream>
 
+using namespace std;
+
 int main() {
     BookingSystem bookingSystem;
     
@@ -15,18 +17,18 @@ int main() {
     bookingSystem.displayAllConcerts();
     
     // Make some bookings
-    std::string booking1 = bookingSystem.createBooking("John Doe", concert1, 1);
-    std::string booking2 = bookingSystem.createBooking("Jane Smith", concert1, 2);
-    std::string booking3 = bookingSystem.createBooking("Alice Johnson", concert2, 1);
+    string booking1 = bookingSystem.createBooking("John Doe", concert1, 1);
+    string booking2 = bookingSystem.createBooking("Jane Smith", concert1, 2);
+    string booking3 = bookingSystem.createBooking("Alice Johnson", concert2, 1);
     
     if (!booking1.empty()) {
-        std::cout << "\nBooking created successfully: " << booking1 << std::endl;
+        cout << "\nBooking created successfully: " << booking1 << endl;
     }
     if (!booking2.empty()) {
-        std::cout << "Booking created successfully: " << booking2 << std::endl;
+        cout << "Booking created successfully: " << booking2 << endl;
     }
     if (!booking3.empty()) {
-        std::cout << "Booking created successfully: " << booking3 << std::endl;
+        cout << "Booking created successfully: " << booking3 << endl;
     }
     
     // Display all bookings
@@ -37,11 +39,11 @@ int main() {
     
     // Cancel a booking
     if (bookingSystem.cancelBooking(booking1)) {
-        std::cout << "\nBooking " << booking1 << " cancelled successfully" << std::endl;
+        cout << "\nBooking " << booking1 << " cancelled successfully" << endl;
     }
     
     // Display updated available seats
     bookingSystem.displayAvailableSeats(concert1);
     
     return 0;
-} 
+}

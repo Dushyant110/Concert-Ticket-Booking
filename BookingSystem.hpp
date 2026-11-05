@@ -6,10 +6,12 @@
 #include "Concert.hpp"
 #include "Booking.hpp"
 
+using namespace std;
+
 class BookingSystem {
 private:
-    std::vector<Concert*> concerts;
-    std::vector<Booking*> bookings;
+    vector<Concert*> concerts;
+    vector<Booking*> bookings;
     int bookingIdCounter;
 
 public:
@@ -17,15 +19,15 @@ public:
     ~BookingSystem();
     
     void addConcert(Concert* concert);
-    std::string createBooking(std::string customerName, Concert* concert, int seatNumber);
-    bool cancelBooking(std::string bookingId);
+    string createBooking(string customerName, Concert* concert, int seatNumber);
+    bool cancelBooking(string bookingId);
     
     void displayAllConcerts() const;
     void displayAllBookings() const;
     void displayAvailableSeats(Concert* concert) const;
     
-    Concert* findConcert(std::string concertId) const;
-    Booking* findBooking(std::string bookingId) const;
+    Concert* findConcert(string concertId) const;
+    Booking* findBooking(string bookingId) const;
 };
 
-#endif 
+#endif

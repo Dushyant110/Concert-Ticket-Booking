@@ -2,6 +2,8 @@
 #include <iostream>
 #include <algorithm>
 
+using namespace std;
+
 BookingSystem::BookingSystem() : bookingIdCounter(1) {}
 
 BookingSystem::~BookingSystem() {
@@ -13,13 +15,13 @@ void BookingSystem::addConcert(Concert* concert) {
     concerts.push_back(concert);
 }
 
-std::string BookingSystem::createBooking(std::string customerName, Concert* concert, int seatNumber) {
+string BookingSystem::createBooking(string customerName, Concert* concert, int seatNumber) {
     if (!concert->bookSeat(seatNumber)) {
-        std::cout << "Failed to book seat: Seat " << seatNumber << " is not available" << std::endl;
+        cout << "Failed to book seat: Seat " << seatNumber << " is not available" << endl;
         return "";
     }
     
-    std::string bookingId = "B" + std::to_string(bookingIdCounter++);
+    string bookingId = "B" + to_string(bookingIdCounter++);
     double totalPrice = concert->getBasePrice();  // Could add premium pricing logic here
     
     Booking* booking = new Booking(bookingId, customerName, concert, seatNumber, totalPrice);
@@ -27,13 +29,13 @@ std::string BookingSystem::createBooking(std::string customerName, Concert* conc
     return bookingId;
 }
 
-bool BookingSystem::cancelBooking(std::string bookingId) {
+bool BookingSystem::cancelBooking(string bookingId) {
     Booking* booking = findBooking(bookingId);
     if (!booking) return false;
     
     booking->getConcert()->cancelSeat(booking->getSeatNumber());
     
-    auto it = std::find(bookings.begin(), bookings.end(), booking);
+    auto it = find(bookings.begin(), bookings.end(), booking);
     if (it != bookings.end()) {
         bookings.erase(it);
         delete booking;
@@ -43,41 +45,41 @@ bool BookingSystem::cancelBooking(std::string bookingId) {
 }
 
 void BookingSystem::displayAllConcerts() const {
-    std::cout << "\nAvailable Concerts:" << std::endl;
+    cout << "\nAvailable Concerts:" << endl;
     for (const auto& concert : concerts) {
         concert->displayInfo();
-        std::cout << "------------------------" << std::endl;
+        cout << "------------------------" << endl;
     }
 }
 
 void BookingSystem::displayAllBookings() const {
-    std::cout << "\nCurrent Bookings:" << std::endl;
+    cout << "\nCurrent Bookings:" << endl;
     for (const auto& booking : bookings) {
         booking->displayInfo();
-        std::cout << "------------------------" << std::endl;
+        cout << "------------------------" << endl;
     }
 }
 
 void BookingSystem::displayAvailableSeats(Concert* concert) const {
-    std::cout << "\nAvailable seats for concert " << concert->getName() << ":" << std::endl;
+    cout << "\nAvailable seats for concert " << concert->getName() << ":" << endl;
     for (int i = 1; i <= concert->getTotalSeats(); i++) {
         if (concert->isSeatAvailable(i)) {
-            std::cout << i << " ";
+            cout << i << " ";
         }
     }
-    std::cout << std::endl;
+    cout << endl;
 }
 
-Concert* BookingSystem::findConcert(std::string concertId) const {
+Concert* BookingSystem::findConcert(string concertId) const {
     for (auto concert : concerts) {
         if (concert->getConcertId() == concertId) return concert;
     }
     return nullptr;
 }
 
-Booking* BookingSystem::findBooking(std::string bookingId) const {
+Booking* BookingSystem::findBooking(string bookingId) const {
     for (auto booking : bookings) {
         if (booking->getBookingId() == bookingId) return booking;
     }
     return nullptr;
-} 
+}
