@@ -1,342 +1,211 @@
-# Concert Ticket Booking System (C++, LLD & Concurrency)
+# Concert Ticket Booking System
 
-A modular, production-grade **Low-Level Design (LLD)** implementation of a Concert Ticket Booking System in modern C++ (C++17). The system demonstrates object-oriented design, SOLID principles, design patterns (**Strategy** and **State**), and thread-safe **mutex-based synchronization** for high-contention concurrent seat reservations.
+A console-based concert ticket booking system implemented in C++17. It manages concerts and seat inventories, applies configurable ticket pricing policies, tracks booking lifecycles, and provides thread-safe seat reservation handling to prevent double bookings.
 
----
+## Features
 
-## 1. Resume Claims Alignment
+- Concert creation and venue management
+- Real-time seat inventory and availability tracking
+- Ticket booking and cancellation workflows
+- Configurable ticket pricing policies (regular, student discount, premium surcharge)
+- Booking lifecycle management (pending, confirmed, cancelled)
+- Mutex-based thread safety for seat reservations and cancellations
+- Prevention of double bookings under concurrent requests
 
-| Resume Claim | Implementation Highlights | Key Classes / Code |
-| :--- | :--- | :--- |
-| **1. Modular architecture using C++, OOP & SOLID** | Decoupled entities, interfaces, and modular service layers conforming to SRP, OCP, LSP, ISP, and DIP. | `Seat`, `Concert`, `Booking`, `BookingService`, `BookingSystem` |
-| **2. Modular booking and cancellation workflows** | Standalone business logic service orchestrating atomic locking, price calculation, validation, state transitions, and rollbacks. | `BookingService::createBooking()`, `BookingService::cancelBooking()` |
-| **3. Strategy & State Design Patterns** | Strategy pattern for extensible pricing policies; State pattern for ticket lifecycle management without monolithic conditionals. | `BookingPolicy`, `RegularBookingPolicy`, `StudentBookingPolicy`, `PremiumBookingPolicy`<br>`BookingState`, `PendingState`, `ConfirmedState`, `CancelledState` |
-| **4. Mutex-based synchronization** | Granular seat-level and system-level `std::mutex` locking to prevent race conditions and guarantee zero double-booking under concurrency. | `Seat::book()`, `Seat::cancel()`, `Concert::bookSeat()`, `BookingSystem::systemMutex` |
+## Tech Stack
 
----
+- C++ (C++17 standard)
+- Standard Template Library (STL containers, smart pointers)
+- Object-Oriented Programming (OOP)
+- Multithreading and synchronization (`std::thread`, `std::mutex`, `std::lock_guard`, `std::scoped_lock`)
 
-## 2. System Architecture
+## Project Structure
+
+```text
+concertBookingSystem/
+├── Booking.hpp / Booking.cpp             # Booking entity with state and policy references
+├── BookingPolicy.hpp / BookingPolicy.cpp # Strategy pattern interface and pricing policies
+├── BookingService.hpp / BookingService.cpp # Booking and cancellation workflow service
+├── BookingState.hpp / BookingState.cpp   # State pattern interface and lifecycle states
+├── BookingSystem.hpp / BookingSystem.cpp # System coordinator and facade
+├── Concert.hpp / Concert.cpp             # Concert details and seat inventory
+├── ConcertBookingDemo.cpp                # Demo application
+├── Seat.hpp / Seat.cpp                   # Seat entity with per-seat mutex protection
+├── run.bat                               # Windows build and run batch script
+├── README.md                             # Documentation
+└── tests/
+    └── ConcertBookingTests.cpp           # Automated unit and concurrency test suite
+```
+
+### Key Files
+
+- `Seat`: Represents an individual seat, holding seat number, booked status, and a dedicated mutex.
+- `Concert`: Stores concert metadata (ID, artist/event name, venue, date, base price) and manages a vector of seats.
+- `Booking`: Represents a user booking record, holding ticket price, customer information, assigned seat, current state, and applied policy.
+- `BookingService`: Orchestrates the step-by-step booking and cancellation workflows.
+- `BookingSystem`: Manages collections of concerts and bookings, providing public methods for client interactions.
+
+## Architecture Overview
 
 ```mermaid
 classDiagram
     class BookingPolicy {
         <<interface>>
-        +calculatePrice(double basePrice) double*
-        +getPolicyName() string*
-    }
-    class RegularBookingPolicy {
         +calculatePrice(double basePrice) double
         +getPolicyName() string
     }
-    class StudentBookingPolicy {
-        -double discountPercentage
-        +calculatePrice(double basePrice) double
-        +getPolicyName() string
-    }
-    class PremiumBookingPolicy {
-        -double surchargePercentage
-        +calculatePrice(double basePrice) double
-        +getPolicyName() string
-    }
-    BookingPolicy <|.. RegularBookingPolicy
-    BookingPolicy <|.. StudentBookingPolicy
-    BookingPolicy <|.. PremiumBookingPolicy
+    class RegularBookingPolicy
+    class StudentBookingPolicy
+    class PremiumBookingPolicy
+    BookingPolicy <|-- RegularBookingPolicy
+    BookingPolicy <|-- StudentBookingPolicy
+    BookingPolicy <|-- PremiumBookingPolicy
 
     class BookingState {
         <<interface>>
-        +getStateName() string*
-        +confirm(Booking& booking) bool*
-        +cancel(Booking& booking) bool*
-    }
-    class PendingState {
         +getStateName() string
         +confirm(Booking& booking) bool
         +cancel(Booking& booking) bool
     }
-    class ConfirmedState {
-        +getStateName() string
-        +confirm(Booking& booking) bool
-        +cancel(Booking& booking) bool
-    }
-    class CancelledState {
-        +getStateName() string
-        +confirm(Booking& booking) bool
-        +cancel(Booking& booking) bool
-    }
-    BookingState <|.. PendingState
-    BookingState <|.. ConfirmedState
-    BookingState <|.. CancelledState
+    class PendingState
+    class ConfirmedState
+    class CancelledState
+    BookingState <|-- PendingState
+    BookingState <|-- ConfirmedState
+    BookingState <|-- CancelledState
 
     class Seat {
         -int seatNumber
         -bool booked
-        -std::mutex seatMutex
+        -mutex seatMutex
         +book() bool
         +cancel() bool
         +isBooked() bool
-        +getSeatNumber() int
     }
 
     class Concert {
         -string concertId
         -string name
-        -string venue
-        -string date
         -double basePrice
-        -int totalSeats
         -vector~unique_ptr~Seat~~ seats
-        -std::mutex concertMutex
         +bookSeat(int seatNumber) bool
         +cancelSeat(int seatNumber) bool
-        +isSeatAvailable(int seatNumber) bool
         +getAvailableSeats() int
     }
 
     class Booking {
         -string bookingId
-        -string customerName
-        -Concert* concert
-        -int seatNumber
-        -double totalPrice
         -shared_ptr~BookingPolicy~ policy
         -unique_ptr~BookingState~ state
-        -std::mutex bookingMutex
         +confirm() bool
         +cancel() bool
         +getStatus() string
-        +getTotalPrice() double
     }
 
     class BookingService {
         +createBooking(...) shared_ptr~Booking~
-        +cancelBooking(shared_ptr~Booking~) bool
+        +cancelBooking(...) bool
     }
 
     class BookingSystem {
         -vector~Concert*~ concerts
         -vector~shared_ptr~Booking~~ bookings
-        -int bookingIdCounter
-        -std::mutex systemMutex
-        -BookingService bookingService
+        -mutex systemMutex
         +addConcert(Concert* concert)
         +createBooking(...) string
         +cancelBooking(string bookingId) bool
-        +displayAllConcerts()
-        +displayAllBookings()
     }
 
-    Concert "1" *-- "many" Seat : owns
-    BookingSystem o-- Concert : manages
-    BookingSystem o-- Booking : manages
-    BookingSystem --> BookingService : delegates workflows
-    BookingService ..> Booking : creates/modifies
-    BookingService ..> Concert : locks/frees seats
-    Booking --> BookingPolicy : calculates price
-    Booking --> BookingState : transitions state
+    Concert "1" *-- "many" Seat
+    BookingSystem --> BookingService
+    BookingService ..> Concert
+    BookingService ..> Booking
+    Booking --> BookingPolicy
+    Booking --> BookingState
 ```
 
----
+## Design Patterns
 
-## 3. Class Responsibilities
+### Strategy Pattern (Pricing Policies)
+The `BookingPolicy` interface defines price calculation logic via `calculatePrice(double basePrice)`. Concrete implementations include `RegularBookingPolicy` (standard price), `StudentBookingPolicy` (applies a percentage discount), and `PremiumBookingPolicy` (applies a surcharge). This allows pricing rules to vary dynamically without altering booking logic.
 
-1. **`Seat`**: Represents a single physical seat. Holds an internal `std::mutex` to ensure that testing availability and setting reservation status is atomic.
-2. **`Concert`**: Represents a concert event (ID, name, venue, date, base price). Owns a collection of seats via `std::vector<std::unique_ptr<Seat>>` and validates seat index boundaries.
-3. **`Booking`**: Encapsulates an individual customer booking. Manages its own lifecycle through a `BookingState` pointer, pricing through a `BookingPolicy` pointer, and synchronizes state mutations via a dedicated mutex.
-4. **`BookingPolicy`** *(Strategy Interface)*: Defines the ticket pricing strategy (`calculatePrice()`), implemented by `RegularBookingPolicy`, `StudentBookingPolicy`, and `PremiumBookingPolicy`.
-5. **`BookingState`** *(State Interface)*: Defines the lifecycle contract (`confirm()`, `cancel()`), implemented by `PendingState`, `ConfirmedState`, and `CancelledState`.
-6. **`BookingService`**: Core modular service that coordinates the business logic for seat reservation, pricing calculation, state transitions, and rollbacks.
-7. **`BookingSystem`**: Central facade and manager that coordinates concert and booking registries with thread safety.
+### State Pattern (Booking Lifecycle)
+The `BookingState` interface encapsulates valid state transitions through `confirm()` and `cancel()`. Concrete states are `PendingState`, `ConfirmedState`, and `CancelledState`. Invalid transitions, such as attempting to cancel an already cancelled booking or confirming a cancelled booking, are rejected by the state objects directly.
 
----
+## How It Works
 
-## 4. Key Workflows
+### Booking Workflow
+1. **Select Concert and Seat**: Client requests a reservation specifying the concert, seat number, customer name, and optional pricing policy.
+2. **Atomic Seat Reservation**: `BookingService` calls `Concert::bookSeat()`, which delegates to `Seat::book()`.
+3. **Availability Validation**: `Seat::book()` acquires its mutex, checks availability, and updates the status atomically. If already booked, the request fails immediately.
+4. **Price Calculation**: The chosen `BookingPolicy` calculates the final ticket price from the concert base price.
+5. **Confirmation**: A `Booking` instance is created in `PendingState` and transitioned to `ConfirmedState`. If confirmation fails, the seat reservation is rolled back.
 
-### 4.1 Booking Workflow (`BookingService::createBooking`)
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client
-    participant BS as BookingSystem
-    participant SVC as BookingService
-    participant C as Concert
-    participant S as Seat
-    participant BP as BookingPolicy
-    participant B as Booking (Pending)
+### Cancellation Workflow
+1. Client calls `BookingSystem::cancelBooking()` with the booking ID.
+2. `Booking::cancel()` is invoked under mutex protection, delegating to the current state.
+3. If in `ConfirmedState`, the booking transitions to `CancelledState`, and the assigned seat in `Concert` is released.
+4. If already in `CancelledState`, the operation returns `false` without modifying seat availability.
 
-    Client->>BS: createBooking(customer, concert, seatNum, policy)
-    BS->>BS: Generate synchronized bookingId
-    BS->>SVC: createBooking(bookingId, customer, concert, seatNum, policy)
-    SVC->>C: bookSeat(seatNum)
-    C->>S: book() (acquire seatMutex)
-    alt Seat already booked or invalid
-        S-->>C: false
-        C-->>SVC: false
-        SVC-->>BS: nullptr (Rollback)
-        BS-->>Client: "" (Failed)
-    else Seat successfully reserved
-        S-->>C: true (booked = true)
-        C-->>SVC: true
-        SVC->>BP: calculatePrice(basePrice)
-        BP-->>SVC: totalPrice
-        SVC->>B: new Booking(PendingState)
-        SVC->>B: confirm() (transition to ConfirmedState)
-        B-->>SVC: true
-        SVC-->>BS: shared_ptr<Booking>
-        BS->>BS: Store booking under systemMutex
-        BS-->>Client: bookingId
-    end
-```
+## Concurrency and Thread Safety
 
-### 4.2 Cancellation Workflow (`BookingService::cancelBooking`)
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client
-    participant BS as BookingSystem
-    participant SVC as BookingService
-    participant B as Booking
-    participant ST as BookingState
-    participant C as Concert
-    participant S as Seat
+Concurrent reservations can lead to double booking if availability checks and seat status updates are not synchronized. To address this:
 
-    Client->>BS: cancelBooking(bookingId)
-    BS->>BS: findBooking(bookingId)
-    BS->>SVC: cancelBooking(booking)
-    SVC->>B: cancel() (acquire bookingMutex)
-    B->>ST: cancel(Booking&)
-    alt State is ConfirmedState
-        ST->>B: setState(CancelledState)
-        ST-->>B: true
-        B-->>SVC: true
-        SVC->>C: cancelSeat(seatNum)
-        C->>S: cancel() (acquire seatMutex, booked = false)
-        SVC-->>BS: true
-        BS-->>Client: true (Cancelled successfully)
-    else State is CancelledState (Repeated Cancellation)
-        ST-->>B: false (Cannot cancel already cancelled ticket)
-        B-->>SVC: false
-        SVC-->>BS: false (Seat untouched)
-        BS-->>Client: false (Rejected)
-    end
-```
+- **Seat-Level Synchronization**: Each `Seat` instance contains an internal `std::mutex`. In `Seat::book()`, checking whether the seat is free and setting `booked = true` occur inside a single critical section protected by `std::lock_guard<std::mutex>`. If multiple threads attempt to reserve the same seat concurrently, exactly one succeeds and all others are rejected.
+- **System-Level Synchronization**: `BookingSystem` uses `systemMutex` to synchronize booking ID generation and modifications to the shared bookings collection.
+- **Booking State Synchronization**: `Booking` protects state transitions (`confirm()` and `cancel()`) with `bookingMutex` to prevent data races.
 
----
-
-## 5. Design Patterns Explained
-
-### 5.1 Strategy Design Pattern (Flexible Pricing)
-- **Problem**: Hardcoding price calculations or discounts using `switch` or `if-else` violates the Open/Closed Principle. Adding a new discount policy requires modifying existing core booking logic.
-- **Solution**: The `BookingPolicy` abstract class defines a uniform price calculation interface.
-- **Implementations**:
-  - `RegularBookingPolicy`: Returns 100% of base price.
-  - `StudentBookingPolicy`: Applies configurable discount (e.g., 20% off base price).
-  - `PremiumBookingPolicy`: Applies configurable surcharge (e.g., 25% VIP fee).
-- **Extensibility**: To add a new pricing strategy (e.g. `EarlyBirdBookingPolicy` or `GroupDiscountPolicy`), create a new subclass of `BookingPolicy`. Zero modifications to `BookingService` or `BookingSystem` are required.
-
-### 5.2 State Design Pattern (Ticket Lifecycle Management)
-- **Problem**: Tracking booking states (`PENDING`, `CONFIRMED`, `CANCELLED`) with enum flags and conditional statements leads to fragile code, invalid transitions, and duplicate cancellation vulnerabilities.
-- **Solution**: The `BookingState` abstract interface delegates transition logic directly to polymorphic state classes:
-  - `PendingState`: Allows `confirm()` (moves to `ConfirmedState`) or `cancel()` (moves to `CancelledState`).
-  - `ConfirmedState`: Active reserved ticket. Allows `cancel()` (moves to `CancelledState`). Rejects duplicate `confirm()`.
-  - `CancelledState`: Terminal state. Rejects further `confirm()` or repeated `cancel()`.
-- **Validation**: Attempting to cancel an already cancelled booking returns `false`, preserving data integrity and preventing invalid seat deallocations.
-
----
-
-## 6. Mutex-Based Concurrency & Thread Safety
-
-### 6.1 Critical Sections & Synchronization
-- **Granular Seat Locking**: Each `Seat` object encapsulates its own `mutable std::mutex seatMutex`. When `Seat::book()` is invoked:
-  ```cpp
-  bool Seat::book() {
-      std::lock_guard<std::mutex> lock(seatMutex);
-      if (booked) {
-          return false;
-      }
-      booked = true;
-      return true;
-  }
-  ```
-  Both checking availability and setting the `booked` flag are performed atomically inside the lock.
-- **Concert Registry Protection**: `Concert::getAvailableSeats()` locks `concertMutex` to ensure accurate seat counts across concurrent threads.
-- **Global Booking Registry**: `BookingSystem` utilizes `systemMutex` to synchronize booking ID generation and additions/queries to the `bookings` container.
-- **Booking State Synchronization**: `Booking` uses `bookingMutex` to prevent concurrent race conditions between confirmation and cancellation.
-
-### 6.2 Deadlock Prevention
-- Lock acquisition order is strictly unidirectional: `systemMutex` -> `concertMutex` -> `seatMutex` -> `bookingMutex`. Locks are never held across unrelated recursive calls.
-
----
-
-## 7. SOLID Principles Applied
-
-1. **Single Responsibility Principle (SRP)**:
-   - `Seat`: Responsible only for seat state and atomic locking.
-   - `Concert`: Responsible only for venue and seat inventory management.
-   - `BookingService`: Dedicated to orchestrating booking/cancellation workflows.
-   - `BookingPolicy`: Dedicated solely to pricing algorithms.
-   - `BookingState`: Dedicated solely to state validation and transitions.
-2. **Open/Closed Principle (OCP)**:
-   - New pricing strategies and new lifecycle states can be added by implementing interfaces without modifying existing code.
-3. **Liskov Substitution Principle (LSP)**:
-   - Any `BookingPolicy` (`Regular`, `Student`, `Premium`) can be passed interchangeably to `createBooking()` without breaking behavior.
-   - Any `BookingState` fulfills the state transition contract.
-4. **Interface Segregation Principle (ISP)**:
-   - Interfaces (`BookingPolicy`, `BookingState`) are focused and concise without forcing implementations to depend on unused methods.
-5. **Dependency Inversion Principle (DIP)**:
-   - High-level modules (`BookingService`, `Booking`) depend on abstractions (`BookingPolicy`, `BookingState`), not on concrete implementations.
-
----
-
-## 8. Compilation & Execution
+## Build and Run
 
 ### Prerequisites
-- Modern C++ compiler supporting **C++17** or later (e.g. MinGW-w64 GCC 7+, Clang 6+, or MSVC 2017+).
+A C++ compiler with C++17 support (GCC 7+, Clang 6+, or MSVC 2017+).
 
-### Quick Run (Windows)
-Double-click `run.bat` or execute in terminal:
+### Windows
+
+Using the batch script:
 ```cmd
 run.bat
 ```
-This script automatically compiles the project, runs the test suite, and starts the live demo.
 
-### Manual Compilation
-
-**Compile Demo:**
+Or manual compilation using `g++`:
 ```cmd
 g++ -static -std=c++17 -I. -o ConcertBookingDemo.exe Seat.cpp Concert.cpp BookingPolicy.cpp BookingState.cpp Booking.cpp BookingService.cpp BookingSystem.cpp ConcertBookingDemo.cpp
+ConcertBookingDemo.exe
 ```
 
-**Run Demo:**
-```cmd
-.\ConcertBookingDemo.exe
+### Linux / macOS
+
+```bash
+g++ -std=c++17 -pthread -I. -o ConcertBookingDemo Seat.cpp Concert.cpp BookingPolicy.cpp BookingState.cpp Booking.cpp BookingService.cpp BookingSystem.cpp ConcertBookingDemo.cpp
+./ConcertBookingDemo
 ```
 
-**Compile & Run Automated Tests:**
+## Running Tests
+
+An automated test suite is provided in `tests/ConcertBookingTests.cpp`. It covers:
+- Concert creation and seat count verification
+- Valid seat booking and availability updates
+- Rejecting duplicate bookings on the same seat
+- Out-of-bounds seat requests (e.g., negative or exceeding capacity)
+- Successful booking cancellation and seat restoration
+- Rejecting repeated cancellations on already cancelled bookings
+- Pricing calculations for regular, student, and premium policies
+- Valid and invalid booking state transitions
+- Multithreaded concurrent booking of the same seat (verifying exactly 1 succeeds)
+- Multithreaded concurrent booking of distinct seats (verifying all succeed)
+
+### Compiling and Running Tests
+
+**Windows:**
 ```cmd
 g++ -static -std=c++17 -I. -o tests\ConcertBookingTests.exe Seat.cpp Concert.cpp BookingPolicy.cpp BookingState.cpp Booking.cpp BookingService.cpp BookingSystem.cpp tests\ConcertBookingTests.cpp
 .\tests\ConcertBookingTests.exe
 ```
 
----
+**Linux / macOS:**
+```bash
+g++ -std=c++17 -pthread -I. -o tests/ConcertBookingTests Seat.cpp Concert.cpp BookingPolicy.cpp BookingState.cpp Booking.cpp BookingService.cpp BookingSystem.cpp tests/ConcertBookingTests.cpp
+./tests/ConcertBookingTests
+```
 
-## 9. Test Suite Verification
-
-The automated test suite (`tests/ConcertBookingTests.cpp`) validates all 13 core requirements:
-
-| # | Test Case | Target Invariant | Result |
-| :---: | :--- | :--- | :---: |
-| 1 | `testConcertCreation` | Initial availability matches total seat capacity | **PASSED** |
-| 2 | `testValidSeatBooking` | Seat booked, status is `CONFIRMED`, price computed | **PASSED** |
-| 3 | `testBookAlreadyBookedSeat` | Re-booking same seat returns failure | **PASSED** |
-| 4 | `testInvalidSeatSelection` | Out-of-bounds seats (0, negative, > total) rejected | **PASSED** |
-| 5 | `testSuccessfulCancellation` | Booking status set to `CANCELLED`, seat freed | **PASSED** |
-| 6 | `testRepeatedCancellation` | Second cancellation on same booking is rejected | **PASSED** |
-| 7 | `testRegularPricing` | Base price preserved ($100 -> $100) | **PASSED** |
-| 8 | `testStudentPricing` | 20% and custom discount applied ($100 -> $80) | **PASSED** |
-| 9 | `testPremiumPricing` | 20% and 50% VIP surcharge applied ($100 -> $120) | **PASSED** |
-| 10 | `testValidStateTransitions` | `PENDING` -> `CONFIRMED` -> `CANCELLED` verified | **PASSED** |
-| 11 | `testInvalidStateTransitions` | `CONFIRMED` -> `CONFIRMED` & `CANCELLED` -> `CONFIRMED` rejected | **PASSED** |
-| 12 | `testConcurrentSameSeatBooking` | **20 threads compete for 1 seat: exactly 1 wins, 19 fail** | **PASSED** |
-| 13 | `testConcurrentDifferentSeatsBooking`| **30 threads book 30 distinct seats: 30 succeed, 0 fail** | **PASSED** |
-
-**Total Invariants Verified: 58/58 Passed (0 Failures).**
+The test runner executes 13 test suites and checks 58 assertions.
